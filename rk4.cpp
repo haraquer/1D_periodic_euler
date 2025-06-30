@@ -19,12 +19,8 @@ Un(_Un)
   coeffsB[2] = 2.;
   coeffsB[3] = 1.;
 
-  fi = new DataStruct<T>[nSteps];
-
-  fi[0].setSize(Un.getSize());
-  fi[1].setSize(Un.getSize());
-  fi[2].setSize(Un.getSize());
-  fi[3].setSize(Un.getSize());
+  current_fi.setSize(Un.getSize());
+  accumulated_fi.setSize(Un.getSize());
 
   Ui.setSize(Un.getSize());
 };
@@ -32,7 +28,6 @@ Un(_Un)
 template<class T>
 RungeKutta4<T>::~RungeKutta4()
 {
-  delete[] fi;
   delete[] coeffsA;
   delete[] coeffsB;
 };
@@ -66,7 +61,7 @@ void RungeKutta4<T>::stepUi(T dt)
   }
   else
   {
-    T *datafi = fi[currentStep-1].getData();
+    T *datafi = current_fi.getData();
     T *dataUi = Ui.getData();
     const T *dataU  = Un.getData();
 
@@ -82,22 +77,16 @@ void RungeKutta4<T>::finalizeRK(const T dt)
 {
   T *dataUn = Un.getData();
   T *dataUi = Ui.getData();
-
-  // set Ui to 0
+ // set Ui to 0
   for(int n = 0; n < Ui.getSize(); n++)
   {
     dataUi[n] = 0.;
   }
-  
-  for(int s = 0; s < nSteps; s++)
+ 
+  const T *dataAccumulated = accumulated_fi.getData();
+  for(int n = 0; n < Ui.getSize(); n++)
   {
-    const T *dataFi = fi[s].getData();
-    const T b = coeffsB[s];
-
-    for(int n = 0; n < Ui.getSize(); n++)
-    {
-      dataUi[n] += b * dataFi[n];
-    }
+    dataUi[n] = dataAccumulated[n];
   }
 
   const T oneDiv6 = 1. / 6.;
@@ -110,13 +99,26 @@ void RungeKutta4<T>::finalizeRK(const T dt)
 template<class T>
 void RungeKutta4<T>::setFi(DataStruct<T> &_F)
 {
-  T *dataFi = fi[currentStep].getData();
-  const T *dataF  = _F.getData();
+  
+T *dataCurrent = current_fi.getData();
+T *dataAccumulated = accumulated_fi.getData();
+const T *dataF = _F.getData();
+const T b = coeffsB[currentStep];
 
-  for(int n = 0; n < Ui.getSize(); n++)
-  {
-    dataFi[n] = dataF[n];
-  }
+// Store current F
+for(int n = 0; n < Ui.getSize(); n++)
+{
+  dataCurrent[n] = dataF[n];
+}
+
+// Add to accumulated sum: b * current_fi
+for(int n = 0; n < Ui.getSize(); n++)
+{
+  if(currentStep == 0)
+    dataAccumulated[n] = b * dataCurrent[n];  // First step: just f1
+  else
+    dataAccumulated[n] += b * dataCurrent[n]; // Add: 2*f2, 2*f3, f4
+}
 
   currentStep++;
 };
@@ -130,3 +132,5 @@ DataStruct<T> * RungeKutta4<T>::currentU()
 
 template class RungeKutta4<float>;
 template class RungeKutta4<double>;
+
+
