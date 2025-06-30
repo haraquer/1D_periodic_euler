@@ -34,7 +34,8 @@ class RungeKutta4
     DataStruct<T> Ui;
 
     // RHS 
-    DataStruct<T> *fi;
+    DataStruct<T> current_fi;
+    DataStruct<T> accumulated_fi;
 
   public:
 
